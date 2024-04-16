@@ -1,7 +1,57 @@
 <!DOCTYPE html><html><head><meta charset="utf-8" />
 	<meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, user-scalable=no" />
 	<title>TacTheCat</title>
+	<style type="text/css">
+		:root {
+			--background: linear-gradient(-30deg, #DEF, #EFF);
+			--text-color: #000;
+			--border-color: #777;
+			--layer-background: #FFF7;
+			--link-color: #08A;
+			--hlink-color: #07B;
+			--vlink-color: #057;
+		}
+
+		html, body {display:flex; flex-direction:column; font-family:"Trebuchet MS", "Droid Sans", Sans-serif; font-size:16px; margin:0px; padding:0px}
+		html {max-width:100%; height:100%; background:var(--background); color:var(--text-color)}
+
+		body {margin:0em 1em; max-width:100%; min-height:100%}
+		nav, section.main, footer {border:3px solid var(--border-color); padding:.5ex 1ex; background:var(--layer-background)}
+		nav {border-top:none; border-radius:0 0 .5ex .5ex}
+		main {flex:1; margin:1em}
+		footer {display:flex; border-bottom:none; border-radius:.5ex .5ex 0 0}
+
+		a:link {color:var(--link-color); text-decoration:none; text-shadow:0px 0px 0px #0000}
+		a:visited {color:var(--vlink-color)} a:hover {color:var(--hlink-color)} a:active {color:var(--vlink-color)}
+
+		nav .icon {display:inline-block; width:2em; height:2em; vertical-align:middle}
+		section.main {border-radius:.5ex}
+
+		.spring {flex:10}
+
+		@media (prefers-color-scheme:dark) {:root {
+			--background: linear-gradient(30deg, #003, #337);
+			--text-color: #FFF;
+			--border-color: #70F;
+			--layer-background: #3037;
+			--link-color: #C0F;
+			--hlink-color: #D3F;
+			--vlink-color: #C7F;
+		}}
+	</style>
 </head><body>
-	<p>Uh... hi....</p>
-	<p>There's nothing here yet, just testing this. There's some utilities I've written as web apps so until I find or devise a way to dynamically list them here please browse the repo.</p>
+	<nav>
+		<label><img class="icon" src="17131442.png" /> Home</label>
+	</nav>
+	<main>
+		<section class="main">
+			<span>Uh... hi....</span>
+			<div>There's nothing here yet, just testing this. There's some utilities I've written as web apps so until I find or devise a way to dynamically list them here please <a href="https://github.com/Xch3l/xch3l.github.io">browse the repo</a>.</div>
+		</section>
+	</main>
+	<footer>
+		<span>bork!</span>
+		<span class="spring"></span>
+		<span>&copy; 2024 Xch3l</span>
+	</footer>
 </body></html>
