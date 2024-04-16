@@ -1,0 +1,364 @@
+<!DOCTYPE html><html><head>
+	<meta charset="utf-8" /><title>Double Stroke Draw</title>
+	<meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, user-scalable=no" />
+	<script type="text/javascript">window.addEventListener("error", function(e) {e=e.error;alert(e.name+": "+e.message+"\n\n"+e.stack);});</script>
+	<style type="text/css">body, html {margin:0px; padding:0px} :not(canvas) {box-sizing:border-box} html {padding:1em; font-family:"Trebuchet MS", "Droid Sans", Sans-Serif} @media (prefers-color-scheme:dark) {html {background:#000; color:#EEE}}</style>
+</head><body><style type="text/css">
+	:root {
+		--fgcolor: #000;
+		--bgcolor: #FFF;
+		--bordercolor: #333;
+		--buttoncolor: #CCC;
+		--buttoncolor2: #CEF;
+	 }
+
+	@media (prefers-color-scheme:dark) {:root {
+		--fgcolor: #FFF;
+		--bgcolor: #000;
+		--bordercolor: #CCC;
+		--buttoncolor: #444;
+		--buttoncolor2: #446;
+	}}
+</style><style type="text/css">
+	#divToolbar button {margin:1px}
+	fieldset {display:inline-block; vertical-align:top; border:1px solid var(--bordercolor); border-radius:4px}
+	input, button {display:inline-block; vertical-align:middle; font-size:90%; text-align:center; border-radius:4px; margin:2px; padding:2px 4px; min-width:4em; color:var(--fgcolor); background:var(--bgcolor); border:1px solid var(--bordercolor)}
+
+	fieldset label {display:inline-block; width:3em}
+
+	input[type=button], input[type=color], button {background:var(--buttoncolor); color:var(--fgcolor)}
+	input[type=button]:hover, input[type=color]:hover, button:hover {background:var(--buttoncolor2)}
+	:disabled {opacity:0.5; background:var(--bgcolor) !important}
+
+	#can {display:block; margin:auto; border:1px solid var(--fgcolor); cursor:crosshair}
+	pre:empty {display:none}
+
+	[data-icon]:before {content:attr(data-icon); display:block; line-height:1em; margin-bottom:4px; font-size:150%}
+	.savebtn:before {text-decoration:underline}
+</style>
+
+<span style="display:none"><input type="file" id="inpFile" accept="text/plain, application/json" /><a id="aDownload"></a></span>
+<div id="divToolbar"></div>
+
+<pre id="pre" style="float:right; border:1px solid currentColor; margin:0px; padding:4px; border-radius:4px"></pre>
+<canvas id="can"></canvas>
+<div style="text-align:center"><img id="imgLarge" width="45" height="45" /><img id="imgSmall" width="15" height="15" /></div>
+
+<fieldset>
+	<legend>Line</legend>
+	<label>Fill:</label>
+	<input type="color" id="inpFillColor" value="#FFFFFF" />
+	<input type="number" id="inpFillWidth" min="0" max="50" value="8" size="5" />
+	<br/>
+	<label>Stroke:</label>
+	<input type="color" id="inpStrokeColor" value="#000000" />
+	<input type="number" id="inpStrokeWidth" min="0" max="50" value="4" size="5" />
+</fieldset>
+
+<fieldset>
+	<legend>Adjust</legend>
+	<label>Move:</label>
+	<input type="number" id="inpOffsX" value="0" size="5" />
+	<input type="number" id="inpOffsY" value="0" size="5" />
+	<br/>
+	<label>Scale:</label>
+	<input type="number" id="inpScaleX" value="100" min="1" max="300" size="5" />
+	<input type="number" id="inpScaleY" value="100" min="1" max="300" size="5" />
+	<br/>
+	<label>Skew:</label>
+	<input type="number" id="inpSkewX" value="0" size="5" />
+	<input type="number" id="inpSkewY" value="0" size="5" />
+	<br/>
+	<label>Rotate:</label>
+	<input type="number" id="inpRotation" value="0" min="-359" max="359" size="5" />
+</fieldset>
+
+<script type="text/javascript">(function() {
+var w, h, c;
+var sk = 1;
+
+// Create background pattern
+can.width = can.height = 16;
+c = can.getContext("2d");
+c.fillStyle = "#7773";
+c.fillRect(0, 0, 8, 8);
+c.fillRect(8, 8, 8, 8);
+can.style.backgroundImage = "url(" + can.toDataURL() + ")";
+
+w = can.width = 512;
+h = can.height = 512;
+c = can.getContext("2d");
+
+can.style.width = (w * sk) + "px";
+can.style.height = (h * sk) + "px";
+
+var strokes = [];
+var redoStack = [];
+var stroke = null;
+
+var btnClear = addToolButton("New", clearCanvas, "\u2055");
+var btnOpen = addToolButton("Open", inpFile.click.bind(inpFile), "\u2386");
+var btnSave = addToolButton("Save", saveState, "\u2186");
+var btnExport = addToolButton("Export", saveImage, "\u2398");
+var btnUndo = addToolButton("Undo", undo, "\u21B6");
+var btnRedo = addToolButton("Redo", redo, "\u21B7");
+
+btnSave.className = "savebtn";
+
+c.lineJoin = c.lineCap = "round";
+
+function addToolButton(label, onClick, icon) {
+	var btn = document.createElement("button");
+	btn.textContent = label;
+	btn.dataset.icon = icon;
+
+	if(onClick)
+		btn.onclick = onClick.bind(btn);
+
+	divToolbar.appendChild(btn);
+	return btn;
+}
+
+function polyline(points) {
+	for(var i = 0; i < points.length; i++) {
+		var p = points[i];
+		c[i ? "lineTo" : "moveTo"](p.x, p.y);
+	}
+}
+
+function clearCanvas() {
+	strokes = [];
+	redoStack = [];
+	inpOffsX.value = inpOffsY.value = 0;
+	inpScaleX.value = inpScaleY.value = 100;
+	draw();
+}
+
+function undo() {
+	if(strokes.length == 0) return;
+	redoStack.push(strokes.pop());
+	draw();
+}
+
+function redo() {
+	if(redoStack.length == 0) return;
+	strokes.push(redoStack.pop());
+	draw();
+}
+
+function loadState(s) {
+	inpFillColor.value = s.fillColor;
+	inpFillWidth.value = s.fillWidth;
+	inpStrokeColor.value = s.strokeColor;
+	inpStrokeWidth.value = s.strokeWidth;
+	inpOffsX.value = s.offsX;
+	inpOffsY.value = s.offsY;
+	inpScaleX.value = s.scaleX;
+	inpScaleY.value = s.scaleY;
+	inpSkewX.value = s.skewX;
+	inpSkewY.value = s.skewY;
+	inpRotation.value = s.rotation;
+
+	redoStack = s.redoStack;
+	strokes = s.strokes;
+	stroke = null;
+
+	draw();
+}
+
+function saveState() {
+	const data = {
+		fillColor: inpFillColor.value,
+		fillWidth: inpFillWidth.valueAsNumber,
+		strokeColor: inpStrokeColor.value,
+		strokeWidth: inpStrokeWidth.valueAsNumber,
+		offsX: inpOffsX.valueAsNumber,
+		offsY: inpOffsY.valueAsNumber,
+		scaleX: inpScaleX.valueAsNumber,
+		scaleY: inpScaleY.valueAsNumber,
+		skewX: inpSkewX.valueAsNumber,
+		skewY: inpSkewY.valueAsNumber,
+		rotation:inpRotation.valueAsNumber,
+		strokes:strokes,
+		redoStack: redoStack
+	};
+
+	URL.revokeObjectURL(aDownload.href);
+	aDownload.href = URL.createObjectURL(new Blob([JSON.stringify(data)], {type:"application/json"}));
+	aDownload.download = "DoubleStroke.json";
+	aDownload.click();
+}
+
+function saveImage() {
+	can.toBlob(b => {
+		URL.revokeObjectURL(aDownload.href);
+		aDownload.href = URL.createObjectURL(b);
+		aDownload.download = "DoubleStrokeCanvas_" + Date.now() + ".png";
+		aDownload.click();
+	}, "image/png");
+}
+
+function draw() {
+	const offsX = inpOffsX.valueAsNumber;
+	const offsY = inpOffsY.valueAsNumber;
+	const scaleX = inpScaleX.valueAsNumber / 100;
+	const scaleY = inpScaleY.valueAsNumber / 100;
+	const skewX = inpSkewX.valueAsNumber / 100;
+	const skewY = inpSkewY.valueAsNumber / 100;
+	const fillWidth = inpFillWidth.valueAsNumber;
+	const strokeWidth = fillWidth + inpStrokeWidth.valueAsNumber;
+
+	btnUndo.disabled = (strokes.length == 0);
+	btnRedo.disabled = (redoStack.length == 0);
+
+	c.setTransform(1, 0, 0, 1, 0, 0);
+	c.clearRect(0, 0, w, h);
+
+	c.translate(w / 2, h / 2);
+	c.scale(scaleX, scaleY);
+	c.rotate(inpRotation.valueAsNumber * Math.PI / 180);
+	c.translate(-w / 2, -h / 2);
+	c.transform(1, skewY, skewX, 1, offsX, offsY);
+	c.beginPath();
+
+	for(var i = 0; i < strokes.length; i++)
+		polyline(strokes[i]);
+
+	if(stroke != null)
+		polyline(stroke);
+
+	if(strokeWidth > 0) {
+		c.strokeStyle = inpStrokeColor.value;
+		c.lineWidth = strokeWidth;
+		c.stroke();
+	}
+
+	if(fillWidth > 0) {
+		c.strokeStyle = inpFillColor.value;
+		c.lineWidth = fillWidth;
+		c.stroke();
+	}
+
+	can.toBlob(b => {
+		URL.revokeObjectURL(aDownload.href);
+		imgLarge.src = imgSmall.src = aDownload.href = URL.createObjectURL(b);
+	}, "image/png");
+}
+
+function dumpObject(o) {
+	const r = Object.getOwnPropertyNames(o);
+	var p = [], n, e;
+
+	for(e = 0; e < r.length; e++)
+		p.push({n:r[e], v:o[r[e]], o:1});
+
+	for(n in o)
+		if(r.indexOf(n) == -1)
+			p.push({n:n, v:o[n], o:0});
+
+	p.sort(function(a, b) {
+		if(a.n < b.n) return -1;
+		if(a.n > b.n) return 1;
+		return 0;
+	}).sort(function(a, b) {
+		if(a.o) return -1;
+		if(b.o) return 1;
+		return 0;
+	})
+
+	for(e = 0; e < p.length; e++) {
+		var x = p[e], v = x.v, t = (v === null ? "null" : typeof v);
+
+		if(v == null) v = "[" + t + "]"; else
+		if(t === "function") v = (v.name || "anonymous") + "(" + (v.length || "") + ")";
+
+		p[e] = x.n + (x.o ? "*" : "") + " = " + v;
+	}
+
+	pre.textContent = p.join("\n");
+}
+
+function handleKey(key, ctrl, shift, alt) {
+	if(ctrl && key === "KeyZ") {
+		if(shift)
+			redo();
+		else
+			undo();
+		return true;
+	}
+
+	if(ctrl && key === "KeyY") {
+		redo();
+		return true;
+	}
+
+	return false;
+}
+
+clearCanvas();
+
+can.ontouchstart = function(ev) {
+	ev.preventDefault();
+};
+
+can.onpointerdown = can.onpointermove = can.onpointerup = function(ev) {
+	const r = can.getBoundingClientRect();
+	const pointerX = (ev.clientX - r.left) / sk;
+	const pointerY = (ev.clientY - r.top) / sk;
+	const fillWidth = inpStrokeWidth.valueAsNumber / 2;
+	const strokeWidth = fillWidth + (inpFillWidth.valueAsNumber / 2);
+
+	ev.preventDefault();
+	ev.stopPropagation();
+	//dumpObject(ev);
+	can.style.cursor = (ev.pointerType === "pen" ? "none" : "cross");
+
+	if(ev.type === "pointerdown")
+		stroke = [];
+
+	if(stroke != null)
+		stroke.push({x:pointerX, y:pointerY});
+
+	if(ev.type === "pointerup") {
+		redoStack = [];
+		strokes.push(stroke);
+		stroke = null;
+	}
+
+	draw();
+
+	c.setTransform(1, 0, 0, 1, pointerX, pointerY);
+	c.lineWidth = 1;
+
+	c.beginPath();
+	c.arc(0, 0, fillWidth, 0, 6.283);
+	c.strokeStyle = inpStrokeColor.value;
+	c.stroke();
+
+	c.beginPath();
+	c.arc(0, 0, strokeWidth, 0, 6.283);
+	c.strokeStyle = inpFillColor.value;
+	c.stroke();
+}.bind(can);
+
+can.onpointerleave = draw;
+
+var controls = [inpStrokeColor, inpFillColor, inpStrokeWidth, inpFillWidth, inpOffsX, inpOffsY, inpScaleX, inpScaleY, inpSkewX, inpSkewY, inpRotation];
+
+for(var i = 0; i < controls.length; i++)
+	controls[i].oninput = draw.bind(controls[i]);
+
+inpFile.onchange = function() {
+	const fr = new FileReader();
+	fr.onload = function() {
+		loadState(JSON.parse(this.result));
+	}.bind(fr);
+	fr.readAsText(inpFile.files[0]);
+};
+
+window.addEventListener("keydown", function(ev) {
+	if(handleKey(ev.code, ev.ctrlKey, ev.shiftKey, ev.altKey))
+		ev.preventDefault();
+});
+})();</script>
+</body></html>
