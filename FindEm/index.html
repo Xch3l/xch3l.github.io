@@ -5,15 +5,25 @@
 </head><body>
 	<div id="divPlayfield"></div>
 
-	<div class="hud">
+	<div class="hud main">
 		<div>Find <span id="spanTarget2"></span>!</div>
 		<div id="divLives"></div>
 	</div>
 
-	<div id="divMessage">
+	<div id="divMessage" class="cover">
 		<div id="divStartText" class="text">Find <span id="spanTarget"></span>!</div>
-		<div id="divWinText" class="text">Got 'em!</div>
-		<div id="divLoseText" class="text">Aw dang</div>
+		<div id="divWinText" class="text interactive">Got 'em!<div>Took you <span id="spanTimeTaken"></span>s</div></div>
+		<div id="divLoseText" class="text interactive">Aw dang&hellip;</div>
+	</div>
+
+	<div id="divSetup" class="cover">
+		<div class="text">
+			<div>Find 'Em!</div>
+			<div id="divIcon">🐈</div>
+			<button id="btnEasy">Easy</button>
+			<button id="btnMedium">Medium</button>
+			<button id="btnHard">Hard</button>
+		</div>
 	</div>
 
 	<script type="text/javascript" src="main.js"></script>

@@ -1,14 +1,35 @@
-html, body {font-family:Sans-serif; font-size:18px; line-height:1.25; margin:0px; padding:0px}
+@keyframes blink {
+	from {opacity:1}
+	to {opacity:0.1}
+}
+
+html, body {font-family:Sans-serif; font-size:5vmin; line-height:1.25; margin:0px; padding:0px}
 html {padding:1ex; background:#000; color:#FFF; cursor:default}
 :not(canvas) {box-sizing:border-box}
 
-#divMessage {display:flex; font-size:500%; position:fixed; left:0px; top:0px; width:100%; height:100%; background:#000; transition:opacity 1s ease 0s; z-index:3}
-#divMessage .text {width:100%; margin:auto; padding:.5ex 0ex; background:#FFF3; text-align:center}
-#divMessage.hide {opacity:0}
+button {font:inherit; font-size:50%; color:CurrentColor; background:#302; padding:.2ex 1ex; border:2px solid; border-radius:.5ex}
+button:hover {background:#413}
 
-#divPlayfield {position:relative; overflow:hidden}
-span.card {font-size:300%; position:fixed; transition:opacity 500ms ease 0s; z-index:-1}
+.cover {display:flex; font-size:250%; position:fixed; left:0px; top:0px; width:100%; height:100%; background:#000; transition:opacity 1s ease 0s; z-index:3}
+.text {width:100%; margin:auto; padding:.5ex 0ex; background:#FFF3; text-align:center; text-shadow:0px 0px 2px #000}
 
-.hud {display:flex; pointer-events:none; z-index:2}
+#divSetup {transition-duration:.5s}
+#divIcon {font-size:80%}
+
+#divMessage {opacity:1; transition-duration:.5s}
+#divMessage.hide {opacity:0; transition-duration:1s}
+#divPlayfield {position:fixed; left:0px; top:0px; width:100%; height:100%; overflow:hidden; z-index:-1}
+span.card {font-size:300%; position:absolute; transition:opacity 500ms ease 0s}
+
+.hud {display:flex; position:absolute; left:0px; top:0px; width:100%; padding:.5ex 1ex; pointer-events:none}
 .hud > div {flex:1}
 #divLives {text-align:right}
+
+.text.interactive {cursor:pointer}
+.text.interactive:after {content:"⚞Click⚟ to play again"; display:block; font-size:25%; animation:blink .5s steps(3) 0s infinite alternate}
+
+#divWinText > div {font-size:50%}
+
+@media screen and (hover:none) {
+	.text.interactive:after {content:"⚞Tap⚟ to play again"}
+}

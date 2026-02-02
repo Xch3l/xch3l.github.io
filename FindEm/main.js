@@ -1,11 +1,10 @@
 const emoji = [
-	"😈", "😺", "😀", "😎", "💩",
-	"👽", "🎃", "🐶", "🐭", "🐹",
-	"🐰", "🐺", "🐮", "🐷", "🐸",
-	"🐼", "🐨", "🐵", "🐯", "🐻",
-	"🤠", "🤓", "🤡", "🤖", "💀",
-	"🦍", "🦊", "🦝", "🦁", "🦌",
-	"🦛", "🦡"
+	"😈", "😺", "😀", "😎", "💩", "👽", "🎃", "🐶",
+	"🐭", "🐹", "🐰", "🐺", "🐮", "🐷", "🐸", "🐼",
+	"🐨", "🐵", "🐯", "🐻", "🤠", "🤓", "🤡", "🤖",
+	"💀", "🦍", "🦊", "🦝", "🦁", "🦌", "🦛", "🦡",
+	"🐲", "🦒", "🐗", "🐔", "🐴", "🌝", "🌚", "⛄",
+	"👻", "👹", "🧸", "🗿"
 ];
 
 function createElement(tag, attrs, parent) {
@@ -64,6 +63,9 @@ function goodCard() {
 	divWinText.style.display = "";
 	divMessage.style.display = "";
 
+	// Set time text
+	spanTimeTaken.textContent = ((Date.now() - gameState.gameStart) / 1000).toFixed(2);
+
 	// Give time for everyone to disappear and show our target alone
 	setTimeout(x => divMessage.classList.remove("hide"), 2000);
 }
@@ -73,12 +75,12 @@ function badCard() {
 	gameState.tries--;
 	fillLives();
 
-	if(gameState.tries == 0) {
+	if(gameState.tries <= 0) {
 		divStartText.style.display = "none";
 		divWinText.style.display = "none";
 		divLoseText.style.display = "";
 		divMessage.style.display = "";
-		divMessage.classList.remove("hide");
+		setTimeout(x => divMessage.classList.remove("hide"), 10);
 		return;
 	}
 
@@ -96,22 +98,20 @@ function createCard(textContent, callback) {
 
 	const card = createElement("span", {
 		className:"card", textContent,
-		style:{left:`${x}px`, top:`${y}px`}
+		style:{left:`${Math.round(x)}px`, top:`${Math.round(y)}px`}
 	}, divPlayfield);
 
 	card.onclick = callback.bind(card); // assign callback
 
-	return {dir, x, y, dx, dy, card};
+	return {x, y, dx, dy, card};
 }
 
 // Starts a new game
 function newGame() {
 	// Ensure limits
-	gameState.maxTargets = Math.max(3, Math.min(32, gameState.maxTargets)); // specially this one, with a roster so small we can lock up the page!
 	gameState.lives = Math.max(1, Math.min(99, gameState.lives)); // allow a bit more lives for the savvy ones
-	gameState.crowd = Math.max(2, Math.min(500, gameState.crowd)); // ensure we have at least some "variety"
 
-	const playSet = new Array(gameState.maxTargets);
+	const playSet = new Array(Math.max(3, Math.min(45, gameState.maxTargets)));
 	const newCards = [];
 
 	cancelAnimationFrame(gameState.animationFrame); // stand still!
@@ -128,21 +128,14 @@ function newGame() {
 		playSet[i] = e;
 	}
 
-	// Rare chance! Find the void!
-	if(Math.random() < 0.001)
-		playSet[0] = "🐈‍⬛";
-
 	// Create our target character
 	const g = createCard(playSet[0], goodCard);
 	g.goodCard = true;
 	newCards.push(g);
 
 	// Create the crowd
-	for(var i = 0; i < gameState.crowd; i++) {
-		var n = (i % playSet.length);
-		while(n == 0) n++;
-		newCards.push(createCard(playSet[n], badCard));
-	}
+	while(newCards.length < Math.max(2, Math.min(500, gameState.crowd)))
+		newCards.push(createCard(playSet[(newCards.length % playSet.length) || 1], badCard));
 
 	// Init the game
 	gameState.cards = newCards;
@@ -155,7 +148,8 @@ function newGame() {
 	divMessage.style.display = "";
 
 	fillLives();
-	setTimeout(x => divMessage.classList.add("hide"), 1000);
+	setTimeout(x => divMessage.classList.add("hide"), 1500);
+	clearInterval(gameState.animationFrame);
 	gameState.animationFrame = requestAnimationFrame(updateGame);
 }
 
@@ -176,48 +170,93 @@ function updateGame(t) {
 		if(card.y < -rect.height) card.y = innerHeight;
 		if(card.y > innerHeight) card.y = -rect.height;
 
-		card.card.style.left = `${card.x}px`;
-		card.card.style.top = `${card.y}px`;
+		card.card.style.left = `${Math.round(card.x)}px`;
+		card.card.style.top = `${Math.round(card.y)}px`;
 	});
 
 	gameState.animationFrame = requestAnimationFrame(updateGame);
 }
 
-divMessage.ontransitionend = () => {
-	divMessage.style.display = divMessage.classList.contains("hide") ? "none" : "";
-};
+const iconHistory = new Array(5); // keep track of the last some to avoid repeats
+function setIcon() {
+	var newIcon;
 
-const difficultyLevel = location.search.match(/difficulty=(?<value>easy|medium|hard|custom)/i)?.groups.value;
+	do {
+		newIcon = emoji[(Math.random() * emoji.length) >>> 0];
+	} while(iconHistory.indexOf(newIcon) > -1);
 
-switch(difficultyLevel) {
-	case "easy":
-		gameState.maxTargets = 5;
-		gameState.crowd = 25;
-		gameState.lives = 5;
-		break;
+	for(var i = iconHistory.length - 1; i > 0; i--)
+		iconHistory[i] = iconHistory[i - 1];
 
-	default:
-	case "medium":
-		gameState.maxTargets = 10;
-		gameState.crowd = 50;
-		gameState.lives = 3;
-		break;
-
-	case "hard":
-		gameState.maxTargets = 30;
-		gameState.crowd = 100;
-		gameState.lives = 1;
-		break;
-
-	case "custom":
-		const targets = parseInt(location.search.match(/characters=(?<value>\d+)/i)?.groups.value);
-		const crowd = parseInt(location.search.match(/crowd=(?<value>\d+)/i)?.groups.value);
-		const lives = parseInt(location.search.match(/lives=(?<value>\d+)/i)?.groups.value);
-
-		gameState.maxTargets = Math.min(30, Math.max(5, targets || 0));
-		gameState.crowd = Math.min(250, Math.max(5, crowd || 0));
-		gameState.lives = Math.min(10, Math.max(1, lives || 0));
-		break;
+	iconHistory[0] = newIcon;
+	divIcon.textContent = newIcon;
 }
 
-(divWinText.onclick = divLoseText.onclick = newGame)();
+// Assign events
+divMessage.ontransitionend = () => {
+	divMessage.style.display = divMessage.classList.contains("hide") ? "none" : "";
+	gameState.gameStart = Date.now();
+};
+
+divWinText.onclick = divLoseText.onclick = newGame;
+
+divSetup.ontransitionend = () => {
+	divSetup.style.display = "none";
+};
+
+gameState.animationFrame = setInterval(setIcon, 500);
+
+btnEasy.onclick = () => {
+	Object.assign(gameState, {maxTargets:5, crowd:25, lives:5});
+	divSetup.style.opacity = 0;
+	newGame();
+};
+
+btnMedium.onclick = () => {
+	Object.assign(gameState, {maxTargets:10, crowd:50, lives:3});
+	divSetup.style.opacity = 0;
+	newGame();
+};
+
+btnHard.onclick = () => {
+	Object.assign(gameState, {maxTargets:30, crowd:100, lives:1});
+	divSetup.style.opacity = 0;
+	newGame();
+};
+
+// Parse params
+const q = {};
+
+location.search.substring(1).toLowerCase().split("&").forEach(x => {
+	x = x.split("=");
+	q[decodeURIComponent(x[0])] = decodeURIComponent(x[1]);
+});
+
+if("difficulty" in q) {
+	divSetup.style.display = "none";
+
+	switch(q.difficulty) {
+		case "easy":
+			btnEasy.click();
+			break;
+
+		default:
+		case "medium":
+			btnMedium.click();
+			break;
+
+		case "hard":
+			btnHard.click();
+			break;
+
+		case "custom":
+			gameState.maxTargets = Math.min(45, Math.max(5, parseInt(q.characters) || 0));
+			gameState.crowd = Math.min(250, Math.max(5, parseInt(q.crowd) || 0));
+			gameState.lives = Math.min(10, Math.max(1, parseInt(q.lives) || 0));
+
+			divSetup.style.opacity = 0;
+			newGame();
+			break;
+	}
+} else
+	setIcon();
