@@ -1,10 +1,9 @@
 const emoji = [
-	"😈", "😺", "😀", "😎", "💩", "👽", "🎃", "🐶",
-	"🐭", "🐹", "🐰", "🐺", "🐮", "🐷", "🐸", "🐼",
-	"🐨", "🐵", "🐯", "🐻", "🤠", "🤓", "🤡", "🤖",
-	"💀", "🦍", "🦊", "🦝", "🦁", "🦌", "🦛", "🦡",
-	"🐲", "🦒", "🐗", "🐔", "🐴", "🌝", "🌚", "⛄",
-	"👻", "👹", "🧸", "🗿"
+	"😈", "😺", "😀", "😎", "💩", "👽", "🎃", "🐶", "🐭", "🐹",
+	"🐰", "🐺", "🐮", "🐷", "🐸", "🐼", "🐨", "🐵", "🐯", "🐻",
+	"🤠", "🤓", "🤡", "🤖", "💀", "🦍", "🦊", "🦝", "🦁", "🦌",
+	"🦛", "🦡", "🐲", "🦒", "🐗", "🐔", "🐴", "🌝", "🌚", "⛄",
+	"👻", "👹", "🧸", "🗿", "🎅", "👃", "🍄", "🪐"
 ];
 
 function createElement(tag, attrs, parent) {
@@ -31,6 +30,11 @@ function createElement(tag, attrs, parent) {
 }
 
 const gameState = {cards:[], tries:4, lastFrame:0};
+
+function createTimeout(fn, delay) {
+	clearTimeout(gameState.timeout);
+	gameState.timeout = setTimeout(fn, delay);
+}
 
 // Creates a row of hearts representing remaining lives
 function fillLives() {
@@ -67,7 +71,7 @@ function goodCard() {
 	spanTimeTaken.textContent = ((Date.now() - gameState.gameStart) / 1000).toFixed(2);
 
 	// Give time for everyone to disappear and show our target alone
-	setTimeout(x => divMessage.classList.remove("hide"), 2000);
+	createTimeout(x => divMessage.classList.remove("hide"), 2000);
 }
 
 // The thing that runs when we misclick or otherwise don't hit our target
@@ -80,7 +84,7 @@ function badCard() {
 		divWinText.style.display = "none";
 		divLoseText.style.display = "";
 		divMessage.style.display = "";
-		setTimeout(x => divMessage.classList.remove("hide"), 10);
+		createTimeout(x => divMessage.classList.remove("hide"), 10);
 		return;
 	}
 
@@ -111,7 +115,7 @@ function newGame() {
 	// Ensure limits
 	gameState.lives = Math.max(1, Math.min(99, gameState.lives)); // allow a bit more lives for the savvy ones
 
-	const playSet = new Array(Math.max(3, Math.min(45, gameState.maxTargets)));
+	const playSet = new Array(Math.max(3, Math.min(emoji.length, gameState.maxTargets)));
 	const newCards = [];
 
 	cancelAnimationFrame(gameState.animationFrame); // stand still!
@@ -148,8 +152,8 @@ function newGame() {
 	divMessage.style.display = "";
 
 	fillLives();
-	setTimeout(x => divMessage.classList.add("hide"), 1500);
-	clearInterval(gameState.animationFrame);
+	createTimeout(x => divMessage.classList.add("hide"), 1500);
+	setTimeout(x => divMessage.style.display = "none", 2000); // fallback for fast clickers
 	gameState.animationFrame = requestAnimationFrame(updateGame);
 }
 
@@ -185,6 +189,7 @@ function setIcon() {
 		newIcon = emoji[(Math.random() * emoji.length) >>> 0];
 	} while(iconHistory.indexOf(newIcon) > -1);
 
+	// Shift them over
 	for(var i = iconHistory.length - 1; i > 0; i--)
 		iconHistory[i] = iconHistory[i - 1];
 
@@ -201,27 +206,35 @@ divMessage.ontransitionend = () => {
 divWinText.onclick = divLoseText.onclick = newGame;
 
 divSetup.ontransitionend = () => {
-	divSetup.style.display = "none";
+	if(divSetup.classList.contains("hide"))
+		divSetup.style.display = "none";
 };
-
-gameState.animationFrame = setInterval(setIcon, 500);
 
 btnEasy.onclick = () => {
 	Object.assign(gameState, {maxTargets:5, crowd:25, lives:5});
-	divSetup.style.opacity = 0;
+	divSetup.classList.add("hide");
 	newGame();
 };
 
 btnMedium.onclick = () => {
 	Object.assign(gameState, {maxTargets:10, crowd:50, lives:3});
-	divSetup.style.opacity = 0;
+	divSetup.classList.add("hide");
 	newGame();
 };
 
 btnHard.onclick = () => {
 	Object.assign(gameState, {maxTargets:30, crowd:100, lives:1});
-	divSetup.style.opacity = 0;
+	divSetup.classList.add("hide");
 	newGame();
+};
+
+divSetup.oncontextmenu = divMessage.oncontextmenu = ev => {
+	ev.preventDefault();
+
+	if(document.fullscreenElement)
+		document.exitFullscreen();
+	else
+		document.documentElement.requestFullscreen();
 };
 
 // Parse params
@@ -250,13 +263,13 @@ if("difficulty" in q) {
 			break;
 
 		case "custom":
-			gameState.maxTargets = Math.min(45, Math.max(5, parseInt(q.characters) || 0));
+			gameState.maxTargets = Math.min(emoji.length, Math.max(5, parseInt(q.characters) || 0));
 			gameState.crowd = Math.min(250, Math.max(5, parseInt(q.crowd) || 0));
 			gameState.lives = Math.min(10, Math.max(1, parseInt(q.lives) || 0));
-
-			divSetup.style.opacity = 0;
 			newGame();
 			break;
 	}
-} else
+} else {
+	gameState.timeout = setInterval(setIcon, 500);
 	setIcon();
+}
